@@ -3,9 +3,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const mongoSanitize = require('express-mongo-sanitize');
+// const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
-const xss = require('xss-clean');
+// const xss = require('xss-clean');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
@@ -18,8 +18,20 @@ const app = express();
 
 // Security Middleware
 app.use(helmet()); // Set security HTTP headers
-app.use(xss()); // Sanitize user input from XSS
-app.use(mongoSanitize()); // Prevent NoSQL injection
+
+// Body parser
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// app.use(xss()); // Sanitize user input from XSS
+
+// app.use(mongoSanitize({
+//   onSanitize: ({ req, key }) => {
+//     console.log(`Sanitized ${key}`);
+//   },
+//   replaceWith: '_',
+//   ignoreQuery: true
+// })); // Prevent NoSQL injection
 
 // Rate limiting
 const limiter = rateLimit({
@@ -29,9 +41,7 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parser
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 
 // CORS
 app.use(cors({
@@ -40,12 +50,9 @@ app.use(cors({
 }));
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ecommerce', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ecommerce')
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/api/auth', authRoutes);
