@@ -8,6 +8,17 @@ const rateLimit = require('express-rate-limit');
 // const xss = require('xss-clean');
 require('dotenv').config();
 
+// Graceful error handling to avoid silent crashes
+process.on('uncaughtException', err => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
 const cartRoutes = require('./routes/cart');

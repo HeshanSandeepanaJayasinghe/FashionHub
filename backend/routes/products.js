@@ -65,6 +65,22 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @route   GET /api/products/search
+// @desc    Search products (text search; prevents NoSQL injection)
+// @access  Public
+router.get('/search', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (!q) {
+      return res.status(400).json({ success: false, message: 'Query param `q` is required' });
+    }
+    const products = await Product.find({ $text: { $search: q } }).populate('vendor', 'name storeName');
+    res.json({ success: true, count: products.length, products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // @route   GET /api/products/:id
 // @desc    Get single product
 // @access  Public
@@ -186,13 +202,7 @@ router.delete('/:id', protect, authorize('vendor', 'admin'), async (req, res) =>
       });
     }
 
-    // ❌ BAD: No input validation (NoSQL Injection)
-  router.get('/search', async (req, res) => {
-  const products = await Product.find(req.query);
-  res.json(products);
-});
 
-    
     // Check ownership
     if (req.user.role === 'vendor' && product.vendor.toString() !== req.user._id.toString()) {
       return res.status(403).json({

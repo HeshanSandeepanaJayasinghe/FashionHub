@@ -66,4 +66,5 @@ userSchema.methods.toJSON = function() {
   return obj;
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Avoid OverwriteModelError when models are compiled multiple times (e.g., during hot reload)
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);
