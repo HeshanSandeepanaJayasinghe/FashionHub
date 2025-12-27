@@ -1,5 +1,6 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { apiFetch } from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -40,20 +41,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Replace with actual API call
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      // Use centralized API helper (handles base URL and auth header)
+      const data = await apiFetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ email, password })
       });
-
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
-
-      const data = await response.json();
 
       setUser(data.user);
       setToken(data.token);
@@ -66,24 +58,15 @@ export const AuthProvider = ({ children }) => {
       console.error('Login error:', error);
       throw error;
     }
-  };
+  }; 
 
   const register = async (userData) => {
     try {
-      // Replace with actual API call
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      // Use centralized API helper (handles base URL and auth header)
+      const data = await apiFetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(userData)
       });
-
-      if (!response.ok) {
-        throw new Error('Registration failed');
-      }
-
-      const data = await response.json();
 
       setUser(data.user);
       setToken(data.token);

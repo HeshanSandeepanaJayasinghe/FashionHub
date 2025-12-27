@@ -43,9 +43,10 @@ app.use('/api/', limiter);
 
 
 
-// CORS
+// CORS - allow Vite dev server (5173) by default; can be overridden with CLIENT_URL env var
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: CLIENT_URL,
   credentials: true
 }));
 
