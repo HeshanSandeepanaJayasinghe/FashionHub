@@ -46,13 +46,12 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
+// Hash password before saving (use async/promise style; don't call next())
+userSchema.pre('save', async function() {
+  if (!this.isModified('password')) return;
+
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
 // Compare password method
@@ -67,4 +66,5 @@ userSchema.methods.toJSON = function() {
   return obj;
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Avoid OverwriteModelError when models are compiled multiple times (e.g., during hot reload)
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);

@@ -1,71 +1,56 @@
-// server.js
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-// const mongoSanitize = require('express-mongo-sanitize');
-const rateLimit = require('express-rate-limit');
-// const xss = require('xss-clean');
-require('dotenv').config();
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products');
-const cartRoutes = require('./routes/cart');
-const orderRoutes = require('./routes/orders');
-const userRoutes = require('./routes/users');
+// Protect middleware - verifies JWT and attaches user to req
+async function protect(req, res, next) {
+  try {
+    let token;
 
-const app = express();
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
 
-// Security Middleware
-app.use(helmet()); // Set security HTTP headers
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Not authorized, token missing' });
+    }
 
-// Body parser
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
 
-// app.use(xss()); // Sanitize user input from XSS
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
 
-// app.use(mongoSanitize({
-//   onSanitize: ({ req, key }) => {
-//     console.log(`Sanitized ${key}`);
-//   },
-//   replaceWith: '_',
-//   ignoreQuery: true
-// })); // Prevent NoSQL injection
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(401).json({ success: false, message: 'Not authorized, token invalid' });
+  }
+}
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
+// Role-based authorization middleware
+function authorize(...roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    next();
+  };
+}
 
+// Placeholder ownership check - routes generally handle ownership checks inline
+function checkOwnership() {
+  return (req, res, next) => {
+    // Implement resource-specific ownership checks in routes when needed
+    next();
+  };
+}
 
-
-// CORS
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
-}));
-
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ecommerce')
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/users', userRoutes);
-
-app.use((err, req, res, next) => {
-  res.status(500).json(err);
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = {
+  protect,
+  authorize,
+  checkOwnership
+};
